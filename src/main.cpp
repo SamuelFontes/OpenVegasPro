@@ -2,11 +2,15 @@
 //
 
 #include "OpenVegasPro.h"
+#include <QApplication>
+#include <QDebug>
+
+
 
 using namespace std;
 
-int main()
+int main(int argc, char **argv)
 {
-	cout << "Hello CMake." << endl;
-	return 0;
+	QApplication app(argc, argv);
+	return app.exec();
 }

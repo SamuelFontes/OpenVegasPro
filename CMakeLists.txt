@@ -25,7 +25,7 @@ find_package(Qt6 COMPONENTS Widgets REQUIRED)
 
 
 # Add source to this project's executable.
-add_executable (OpenVegasPro "OpenVegasPro.cpp" "OpenVegasPro.h")
+add_executable (OpenVegasPro "src/main.cpp" "src/OpenVegasPro.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET OpenVegasPro PROPERTY CXX_STANDARD 20)
