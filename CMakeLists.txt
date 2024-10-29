@@ -1,7 +1,4 @@
-﻿# CMakeList.txt : CMake project for OpenVegasPro, include source and define
-# project specific logic here.
-#
-cmake_minimum_required (VERSION 3.8)
+﻿cmake_minimum_required (VERSION 3.8)
 project ("OpenVegasPro")
 
 # Enable Hot Reload for MSVC compilers if supported.
@@ -17,5 +14,6 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET OpenVegasPro PROPERTY CXX_STANDARD 20)
 endif()
 
+# Add external folder after OpenCV is found
 add_subdirectory("external")
-target_link_libraries(OpenVegasPro PRIVATE external)
+target_link_libraries(OpenVegasPro PRIVATE external)  

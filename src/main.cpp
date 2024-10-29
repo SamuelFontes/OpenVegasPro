@@ -2,6 +2,8 @@
 //
 
 #include "OpenVegasPro.h"
+#include <opencv2/videoio.hpp>
+#include <opencv2/highgui.hpp>
 
 
 using namespace std;

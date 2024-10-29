@@ -1,10 +1,9 @@
 # variables
-set(BUILD_TESTS "0")
-set(BUILD_PERF_TESTS "0")
-set(BUILD_opencv_python2 "0")
-set(BUILD_opencv_python3 "0")
-set(OpenCV_FIND_COMPONENTS "")
-set(OpenCV_EXTRA_COMPONENTS "")
+# Set the build options for OpenCV
+set(BUILD_TESTS OFF CACHE BOOL "Disable OpenCV tests" FORCE)
+set(BUILD_PERF_TESTS OFF CACHE BOOL "Disable OpenCV performance tests" FORCE)
+set(BUILD_opencv_python2 OFF CACHE BOOL "Disable OpenCV Python 2 support" FORCE)
+set(BUILD_opencv_python3 OFF CACHE BOOL "Disable OpenCV Python 3 support" FORCE)
 set(OPENCV_PYTHON_SKIP_DETECTION ON)
 
 # add folders
@@ -14,11 +13,10 @@ add_subdirectory(opencv)
 # define interface
 add_library(external INTERFACE)
 
-# Set C++ standard for OpenCV if needed
-set_target_properties(opencv_core PROPERTIES CXX_STANDARD 11)
+# Include directories for OpenCV
+target_include_directories(external INTERFACE ${OpenCV_INCLUDE_DIRS})
 
-# add libraries to interface
+# Add libraries to interface
 target_link_libraries(external INTERFACE raylib)
 target_include_directories(external INTERFACE "raygui/src/")
-target_link_libraries(external INTERFACE opencv_core opencv_imgproc opencv_highgui opencv_videoio)
-
+target_link_libraries(external INTERFACE opencv_videoio opencv_core)
