@@ -4,3 +4,6 @@
 [submodule "external/raygui"]
 	path = external/raygui
 	url = https://github.com/raysan5/raygui
+[submodule "external/opencv"]
+	path = external/opencv
+	url = https://github.com/opencv/opencv.git
