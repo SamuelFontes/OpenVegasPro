@@ -1,6 +1,16 @@
-﻿// OpenVegasPro.cpp : Defines the entry point for the application.
+﻿// main.cpp : Defines the entry point for the application.
 //
-#include "OpenVegasPro.h"
+
+#include <iostream>
+#include <opencv2/opencv.hpp>
+
+
+#include "raylib.h"
+// TODO: learn why this is needed
+#define RAYGUI_IMPLEMENTATION
+#include "raygui.h"
+
+//#include "external/portable-file-dialogs.h"
 
 int main(int argc, char** argv)
 {
@@ -16,6 +26,9 @@ int main(int argc, char** argv)
 	bool showMessageBox = false;
 
 	SetTargetFPS(60); // TODO: remove this after the frame loading is running in another core
+
+	// Directory selection
+    //auto dir = pfd::select_folder("Select any directory", pfd::path::home()).result();
 
 	while (!WindowShouldClose())
 	{
