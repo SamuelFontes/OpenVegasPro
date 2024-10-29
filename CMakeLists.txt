@@ -14,6 +14,9 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET OpenVegasPro PROPERTY CXX_STANDARD 20)
 endif()
 
+# Find OpenCV package
+find_package(OpenCV REQUIRED)
+
 # Add external folder after OpenCV is found
 add_subdirectory("external")
-target_link_libraries(OpenVegasPro PRIVATE external)  
+target_link_libraries(OpenVegasPro PRIVATE external ${OpenCV_LIBS} ${OpenCV_INCLUDE_DIRS})  
