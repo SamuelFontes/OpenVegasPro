@@ -8,32 +8,18 @@
 int main(int argc, char** argv)
 {
 	// Load image
-    //std::string imagePath = "X:/Recordings/2024-06-09_11-00-23.mp4"; 
-	cv::Mat img = cv::imread("C:/Users/sfontes/Pictures/Saved Pictures/discord_pic.png");
+	std::string videoFilePath = "X:/Recordings/2024-06-09_11-00-23.mp4";
 
-
-	// Convert color to be used in opengl
-	cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
-
-	// cv::imshow("Display Window", img); // use to debug frame
-	// cv::waitKey(0);
-
-	// Create a Raylib image from the OpenCV Mat
-	Image raylibImage = {
-		img.data, // pixel data
-		img.cols, // width
-		img.rows, // height
-		1,          // mipmaps (need to be 1)
-		PIXELFORMAT_UNCOMPRESSED_R8G8B8 // format (RGB)
-	};
+	// Create a VideoCapture object
+	cv::VideoCapture cap(videoFilePath);
+	cv::Mat frame;
 
 	InitWindow(1366, 768, "Open Vegas Pro");
 
-	// Load texture from the Raylib image
-	Texture2D texture = LoadTextureFromImage(raylibImage);
 
 
 	bool showMessageBox = false;
+
 
 	while (!WindowShouldClose())
 	{
@@ -42,7 +28,33 @@ int main(int argc, char** argv)
 		BeginDrawing();
 		ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
 
+		// Process video
+		cap >> frame;
+		// Check if the frame is empty (end of video)
+        if (frame.empty()) {
+            std::cout << "End of video." << std::endl;
+            break;
+        }
+
+		// Convert color to be used in opengl
+		cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
+
+		// cv::imshow("Display Window", img); // use to debug frame
+		// cv::waitKey(0);
+
+		// Create a Raylib image from the OpenCV Mat
+		Image raylibImage = {
+			frame.data, // pixel data
+			frame.cols, // width
+			frame.rows, // height
+			1,          // mipmaps (need to be 1)
+			PIXELFORMAT_UNCOMPRESSED_R8G8B8 // format (RGB)
+		};
+
+		// Load texture from the Raylib image
+		Texture2D texture = LoadTextureFromImage(raylibImage);
 		DrawTexture(texture, 0, 0, WHITE);
+		DrawFPS(100, 100);
 
 		if (GuiButton(Rectangle(24, 24, 120, 30), "#191#Show Message")) showMessageBox = true;
 
@@ -55,6 +67,7 @@ int main(int argc, char** argv)
 		}
 
 		EndDrawing();
+		UnloadTexture(texture);
 	}
 
 	CloseWindow();
