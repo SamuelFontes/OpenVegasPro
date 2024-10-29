@@ -1,13 +1,10 @@
 ﻿// OpenVegasPro.cpp : Defines the entry point for the application.
 //
-
 #include "OpenVegasPro.h"
-#include <opencv2/opencv.hpp>
-
 
 int main(int argc, char** argv)
 {
-	// Load image
+	// Load Video
 	std::string videoFilePath = "X:/Recordings/2024-06-09_11-00-23.mp4";
 
 	// Create a VideoCapture object
@@ -16,18 +13,12 @@ int main(int argc, char** argv)
 
 	InitWindow(1366, 768, "Open Vegas Pro");
 
-
-
 	bool showMessageBox = false;
 
+	SetTargetFPS(60); // TODO: remove this after the frame loading is running in another core
 
 	while (!WindowShouldClose())
 	{
-		// Draw
-		//----------------------------------------------------------------------------------
-		BeginDrawing();
-		ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
-
 		// Process video
 		cap >> frame;
 		// Check if the frame is empty (end of video)
@@ -52,7 +43,13 @@ int main(int argc, char** argv)
 		};
 
 		// Load texture from the Raylib image
-		Texture2D texture = LoadTextureFromImage(raylibImage);
+		Texture2D texture = LoadTextureFromImage(raylibImage); // TODO: this needs to be buffered, loading a texture every frame is bad
+
+		// Draw
+		//----------------------------------------------------------------------------------
+		BeginDrawing();
+		ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
+
 		DrawTexture(texture, 0, 0, WHITE);
 		DrawFPS(100, 100);
 
