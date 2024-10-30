@@ -40,6 +40,7 @@ int main(int argc, char** argv)
 	// Directory selection
 	//auto dir = pfd::select_folder("Select any directory", pfd::path::home()).result();
 	bool isVideoRunning = false;
+	Rectangle videoRec = Rectangle{ 1024, 24, 320, 180 };
 
 	while (!WindowShouldClose())
 	{
@@ -81,16 +82,19 @@ int main(int argc, char** argv)
 		BeginDrawing();
 		ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
 
-		if (isVideoRunning) DrawTexture(texture, 0, 0, WHITE);
+		DrawRectangle(videoRec.x - 2, videoRec.y - 2, videoRec.width + 4, videoRec.height + 4, BLACK);
+		if (isVideoRunning)
+		{
+			DrawTexturePro(texture, { 0,0,(float)texture.width,(float)texture.height }, videoRec, { 0,0 }, 0, WHITE);
+		}
 		DrawFPS(100, 100);
 
-		if (GuiButton(Rectangle(24, 24, 120, 30), "#191#Show Message")) showMessageBox = true;
-		if (GuiButton(Rectangle(300, 24, 120, 30), "Open File")) 
+		if (GuiButton(Rectangle(24, 24, 120, 30), "Open File"))
 		{
 			auto f = pfd::open_file("Choose files to read", pfd::path::home(),
-                            { "Video", "*.mp4 *.mkv",
-                              "All Files", "*" },
-                            pfd::opt::none);
+				{ "Video", "*.mp4 *.mkv",
+				  "All Files", "*" },
+				pfd::opt::none);
 			std::cout << "Selected files:";
 			for (auto const& name : f.result()) {
 				cap = cv::VideoCapture(name);
