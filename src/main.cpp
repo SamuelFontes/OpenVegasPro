@@ -5,7 +5,6 @@
 #include <opencv2/opencv.hpp>
 
 #include "raylib.h"
-// TODO: learn why this is needed
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
 
@@ -18,6 +17,8 @@
 #undef Rectangle
 #undef CloseWindow
 #undef ShowCursor
+#include "video_preview.h"
+
 
 
 typedef struct VideoPlayer {
@@ -28,6 +29,12 @@ typedef struct VideoPlayer {
 	Rectangle videoRec;
 	std::vector<Texture2D> framesToBeRendered;
 };
+std::atomic<bool> isVideoRunning(false);
+
+Rectangle videoRec = Rectangle{ 1024, 24, 320, 180 };
+VideoPreview preview(videoRec);
+
+double fps = 0;
 
 int main(int argc, char** argv)
 {
@@ -42,12 +49,8 @@ int main(int argc, char** argv)
 
 	bool showMessageBox = false;
 
-	SetTargetFPS(60); // TODO: remove this after the frame loading is running in another core
-
 	// Directory selection
 	//auto dir = pfd::select_folder("Select any directory", pfd::path::home()).result();
-	bool isVideoRunning = false;
-	Rectangle videoRec = Rectangle{ 1024, 24, 320, 180 };
 
 	while (!WindowShouldClose())
 	{
@@ -59,6 +62,7 @@ int main(int argc, char** argv)
 			// Check if the frame is empty (end of video)
 			if (player.frame.empty()) {
 				isVideoRunning = false;
+				fps = 0;
 			}
 		}
 		if (isVideoRunning)
@@ -90,12 +94,10 @@ int main(int argc, char** argv)
 		ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
 
 		DrawRectangle(videoRec.x - 2, videoRec.y - 2, videoRec.width + 4, videoRec.height + 4, BLACK);
-		if (isVideoRunning)
-		{
-			DrawTexturePro(texture, { 0,0,(float)texture.width,(float)texture.height }, videoRec, { 0,0 }, 0, WHITE);
-		}
+		preview.RenderFrame();
 		DrawFPS(100, 100);
 
+		// Open a video
 		if (GuiButton(Rectangle(24, 24, 120, 30), "Open File"))
 		{
 			auto f = pfd::open_file("Choose files to read", pfd::path::home(),
@@ -106,6 +108,7 @@ int main(int argc, char** argv)
 			for (auto const& name : f.result()) {
 				player.capture = cv::VideoCapture(name);
 				isVideoRunning = true;
+				fps = player.capture.get(cv::CAP_PROP_FPS);
 			}
 
 			std::cout << "\n";
