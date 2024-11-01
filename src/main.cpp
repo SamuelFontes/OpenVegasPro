@@ -14,12 +14,21 @@
 #define Rectangle WinRectangle
 #define CloseWindow WinCloseWindow
 #define ShowCursor WinShowCursor
-#include "external/portable-file-dialogs.h" // TODO: fix this shit on windows, the Rectangle thing is confliting with the Raylib one
+#include "external/portable-file-dialogs.h" 
 // Restore Raylib function names
 #undef Rectangle
 #undef CloseWindow
 #undef ShowCursor
 
+
+typedef struct VideoPlayer {
+	bool isVideoLoaded;
+	bool isVideoPlaying;
+	cv::VideoCapture capture;
+	cv::Mat frame;
+	Rectangle videoRec;
+	std::vector<Texture2D> framesToBeRendered;
+};
 
 int main(int argc, char** argv)
 {
@@ -27,9 +36,8 @@ int main(int argc, char** argv)
 	std::string videoFilePath = "X:/Recordings/2024-06-09_11-00-23.mp4";
 	//auto videoFilePath = pfd::open_file("Open", pfd::path::home()).result();
 
-	// Create a VideoCapture object
-	cv::VideoCapture cap;
-	cv::Mat frame;
+	// Create a video player
+	VideoPlayer player = {};
 
 	InitWindow(1366, 768, "Open Vegas Pro");
 
@@ -48,9 +56,9 @@ int main(int argc, char** argv)
 		if (isVideoRunning)
 		{
 			// Process video
-			cap >> frame;
+			player.capture >> player.frame;
 			// Check if the frame is empty (end of video)
-			if (frame.empty()) {
+			if (player.frame.empty()) {
 				isVideoRunning = false;
 			}
 		}
@@ -58,16 +66,16 @@ int main(int argc, char** argv)
 		{
 
 			// Convert color to be used in opengl
-			cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
+			cv::cvtColor(player.frame, player.frame, cv::COLOR_BGR2RGB);
 
 			// cv::imshow("Display Window", img); // use to debug frame
 			// cv::waitKey(0);
 
 			// Create a Raylib image from the OpenCV Mat
 			Image raylibImage = {
-			  frame.data, // pixel data
-			  frame.cols, // width
-			  frame.rows, // height
+			  player.frame.data, // pixel data
+			  player.frame.cols, // width
+			  player.frame.rows, // height
 			  1,          // mipmaps (need to be 1)
 			  PIXELFORMAT_UNCOMPRESSED_R8G8B8 // format (RGB)
 			};
@@ -97,7 +105,7 @@ int main(int argc, char** argv)
 				pfd::opt::none);
 			std::cout << "Selected files:";
 			for (auto const& name : f.result()) {
-				cap = cv::VideoCapture(name);
+				player.capture = cv::VideoCapture(name);
 				isVideoRunning = true;
 			}
 
