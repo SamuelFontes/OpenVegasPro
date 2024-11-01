@@ -3,15 +3,15 @@
 
 class VideoPreview {
 private:
-	bool hasFrameToRender;
-	Texture2D* currentFrame;
-	Rectangle renderingRectangle;
+	bool _hasFrameToRender;
+	Texture2D* _currentFrame;
+	Rectangle _renderingRectangle;
 
 public:
 	VideoPreview(Rectangle rec) {
-		hasFrameToRender = false;
-		currentFrame = nullptr;
-		renderingRectangle = rec;
+		_hasFrameToRender = false;
+		_currentFrame = nullptr;
+		_renderingRectangle = rec;
 	}
 	void RenderFrame();
 	void SetCurrentFrame(Texture2D* frame);

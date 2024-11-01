@@ -4,7 +4,6 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
-
 #include "raylib.h"
 // TODO: learn why this is needed
 #define RAYGUI_IMPLEMENTATION
