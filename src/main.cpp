@@ -19,8 +19,6 @@
 #undef ShowCursor
 #include "video_preview.h"
 
-
-
 typedef struct VideoPlayer {
 	bool isVideoLoaded;
 	bool isVideoPlaying;
@@ -49,12 +47,12 @@ int main(int argc, char** argv)
 
 	bool showMessageBox = false;
 
+	Texture2D texture = {};
 	// Directory selection
 	//auto dir = pfd::select_folder("Select any directory", pfd::path::home()).result();
 
 	while (!WindowShouldClose())
 	{
-		Texture2D texture = {};
 		if (isVideoRunning)
 		{
 			// Process video
@@ -85,6 +83,7 @@ int main(int argc, char** argv)
 
 			// Load texture from the Raylib image
 			texture = LoadTextureFromImage(raylibImage); // TODO: this needs to be buffered, loading a texture every frame is bad
+			preview.SetCurrentFrame(&texture);
 		}
 
 
@@ -114,6 +113,10 @@ int main(int argc, char** argv)
 			std::cout << "\n";
 
 		}
+		if(GuiButton(Rectangle(200, 24, 120, 30), "Pause"))
+		{
+			isVideoRunning = !isVideoRunning;
+		}
 
 		if (showMessageBox)
 		{
@@ -124,7 +127,11 @@ int main(int argc, char** argv)
 		}
 
 		EndDrawing();
-		if (isVideoRunning) UnloadTexture(texture);
+		if(isVideoRunning)
+		{
+			UnloadTexture(texture);
+			preview.UnloadCurrentFrame();
+		}
 	}
 
 	CloseWindow();
