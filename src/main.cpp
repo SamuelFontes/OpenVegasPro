@@ -20,8 +20,6 @@
 #include "video_preview.h"
 
 typedef struct VideoPlayer {
-	bool isVideoLoaded;
-	bool isVideoPlaying;
 	cv::VideoCapture capture;
 	cv::Mat frame;
 	Rectangle videoRec;
@@ -65,7 +63,6 @@ int main(int argc, char** argv)
 		}
 		if (isVideoRunning)
 		{
-
 			// Convert color to be used in opengl
 			cv::cvtColor(player.frame, player.frame, cv::COLOR_BGR2RGB);
 

@@ -11,16 +11,12 @@ endif()
 file(GLOB SOURCE_FILES "src/*.cpp")
 
 # Add header files manually (if necessary)
-#set(HEADER_FILES 
-    #"src/VideoPreview.h"
-    #"src/Timeline.h"
-    #"src/Clip.h"
-    #"src/Layer.h"
-    #"src/VideoPlayer.h"
-#)
+set(HEADER_FILES 
+    "src/enums.h"
+)
 
 # Add source to this project's executable.
-add_executable (OpenVegasPro ${SOURCE_FILES})# ${HEADER_FILES})
+add_executable (OpenVegasPro ${SOURCE_FILES} ${HEADER_FILES})
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET OpenVegasPro PROPERTY CXX_STANDARD 20)
