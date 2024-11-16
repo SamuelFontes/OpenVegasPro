@@ -12,14 +12,16 @@
 #define Rectangle WinRectangle
 #define CloseWindow WinCloseWindow
 #define ShowCursor WinShowCursor
-#include "external/portable-file-dialogs.h" 
+#include "external/portable-file-dialogs.h"
 // Restore Raylib function names
 #undef Rectangle
 #undef CloseWindow
 #undef ShowCursor
 #include "video_preview.h"
+#include "media_source.h"
 
-typedef struct VideoPlayer {
+typedef struct VideoPlayer
+{
 	cv::VideoCapture capture;
 	cv::Mat frame;
 	Rectangle videoRec;
@@ -27,16 +29,17 @@ typedef struct VideoPlayer {
 };
 std::atomic<bool> isVideoRunning(false);
 
-Rectangle videoRec = Rectangle{ 1024, 24, 320, 180 };
+Rectangle videoRec = Rectangle{1024, 24, 320, 180};
 VideoPreview preview(videoRec);
 
 double fps = 0;
 
-int main(int argc, char** argv)
+std::vector<MediaSource> mediaSources = {};
+int main(int argc, char **argv)
 {
 	// Load Video
 	std::string videoFilePath = "X:/Recordings/2024-06-09_11-00-23.mp4";
-	//auto videoFilePath = pfd::open_file("Open", pfd::path::home()).result();
+	// auto videoFilePath = pfd::open_file("Open", pfd::path::home()).result();
 
 	// Create a video player
 	VideoPlayer player = {};
@@ -47,7 +50,7 @@ int main(int argc, char** argv)
 
 	Texture2D texture = {};
 	// Directory selection
-	//auto dir = pfd::select_folder("Select any directory", pfd::path::home()).result();
+	// auto dir = pfd::select_folder("Select any directory", pfd::path::home()).result();
 
 	while (!WindowShouldClose())
 	{
@@ -56,7 +59,8 @@ int main(int argc, char** argv)
 			// Process video
 			player.capture >> player.frame;
 			// Check if the frame is empty (end of video)
-			if (player.frame.empty()) {
+			if (player.frame.empty())
+			{
 				isVideoRunning = false;
 				fps = 0;
 			}
@@ -71,18 +75,17 @@ int main(int argc, char** argv)
 
 			// Create a Raylib image from the OpenCV Mat
 			Image raylibImage = {
-			  player.frame.data, // pixel data
-			  player.frame.cols, // width
-			  player.frame.rows, // height
-			  1,          // mipmaps (need to be 1)
-			  PIXELFORMAT_UNCOMPRESSED_R8G8B8 // format (RGB)
+				player.frame.data,				// pixel data
+				player.frame.cols,				// width
+				player.frame.rows,				// height
+				1,								// mipmaps (need to be 1)
+				PIXELFORMAT_UNCOMPRESSED_R8G8B8 // format (RGB)
 			};
 
 			// Load texture from the Raylib image
 			texture = LoadTextureFromImage(raylibImage); // TODO: this needs to be buffered, loading a texture every frame is bad
 			preview.SetCurrentFrame(&texture);
 		}
-
 
 		// Draw
 		//----------------------------------------------------------------------------------
@@ -92,39 +95,41 @@ int main(int argc, char** argv)
 		DrawRectangle(videoRec.x - 2, videoRec.y - 2, videoRec.width + 4, videoRec.height + 4, BLACK);
 		preview.RenderFrame();
 		DrawFPS(100, 100);
+		int y = 32;
+		for (auto &source : mediaSources)
+		{
+			//DrawText(source.GetFileName(), 100, y, 16, BLACK);
+			y += 16;
+		}
 
 		// Open a video
 		if (GuiButton(Rectangle(24, 24, 120, 30), "Open File"))
 		{
 			auto f = pfd::open_file("Choose files to read", pfd::path::home(),
-				{ "Video", "*.mp4 *.mkv",
-				  "All Files", "*" },
-				pfd::opt::none);
+									{"Video", "*.mp4 *.mkv",
+									 "All Files", "*"},
+									pfd::opt::none);
 			std::cout << "Selected files:";
-			for (auto const& name : f.result()) {
+			for (const std::string& name : f.result())
+			{
+				MediaSource source(name);
+				//mediaSources.push_back(source);
+
+				// TODO: move this to the media_clip
 				player.capture = cv::VideoCapture(name);
 				isVideoRunning = true;
 				fps = player.capture.get(cv::CAP_PROP_FPS);
 			}
 
 			std::cout << "\n";
-
 		}
-		if(GuiButton(Rectangle(200, 24, 120, 30), "Pause"))
+		if (GuiButton(Rectangle(200, 24, 120, 30), "Pause"))
 		{
 			isVideoRunning = !isVideoRunning;
 		}
 
-		if (showMessageBox)
-		{
-			int result = GuiMessageBox(Rectangle(85, 70, 250, 100),
-				"#191#Message Box", "Hi! This is a message!", "Nice;Cool");
-
-			if (result >= 0) showMessageBox = false;
-		}
-
 		EndDrawing();
-		if(isVideoRunning)
+		if (isVideoRunning)
 		{
 			UnloadTexture(texture);
 			preview.UnloadCurrentFrame();

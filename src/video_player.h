@@ -1,6 +1,6 @@
 #pragma once
 #include "raylib.h"
-#include "VideoPreview.h"
+#include "video_preview.h"
 
 class VideoPlayer {
 private:

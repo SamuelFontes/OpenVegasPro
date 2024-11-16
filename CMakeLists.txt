@@ -13,6 +13,7 @@ file(GLOB SOURCE_FILES "src/*.cpp")
 # Add header files manually (if necessary)
 set(HEADER_FILES 
     "src/enums.h"
+    "src/utils.h"
 )
 
 # Add source to this project's executable.
