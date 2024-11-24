@@ -12,11 +12,13 @@
 #define Rectangle WinRectangle
 #define CloseWindow WinCloseWindow
 #define ShowCursor WinShowCursor
+#define DrawText WinDrawText
 #include "external/portable-file-dialogs.h"
 // Restore Raylib function names
 #undef Rectangle
 #undef CloseWindow
 #undef ShowCursor
+#undef DrawText
 #include "video_preview.h"
 #include "media_source.h"
 
@@ -98,7 +100,7 @@ int main(int argc, char **argv)
 		int y = 32;
 		for (auto &source : mediaSources)
 		{
-			//DrawText(source.GetFileName(), 100, y, 16, BLACK);
+			DrawText(source.GetFileName(), 100, y, 16, BLACK);
 			y += 16;
 		}
 
@@ -113,7 +115,7 @@ int main(int argc, char **argv)
 			for (const std::string& name : f.result())
 			{
 				MediaSource source(name);
-				//mediaSources.push_back(source);
+				mediaSources.push_back(source);
 
 				// TODO: move this to the media_clip
 				player.capture = cv::VideoCapture(name);

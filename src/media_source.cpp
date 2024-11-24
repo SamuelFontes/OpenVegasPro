@@ -3,14 +3,14 @@
 MediaSource::MediaSource(const std::string& filePath)
 {
     // Get media type
-    if(StringContainAny(filePath, {".mp4",".mkv"})) // TODO: add all supported formats here, or move it elsewhere
+    if(Utils::StringContainAny(filePath, {".mp4",".mkv"})) // TODO: add all supported formats here, or move it elsewhere
     {
         m_mediaType = MediaType::Video;
         // TODO: add audio track
     }
-    else if(StringContainAny(filePath, {".mp3",".obb"}))
+    else if(Utils::StringContainAny(filePath, {".mp3",".obb"}))
         m_mediaType = MediaType::Audio;
-    else if(StringContainAny(filePath, {".png",".jpg",".jpeg"}))
+    else if(Utils::StringContainAny(filePath, {".png",".jpg",".jpeg"}))
         m_mediaType = MediaType::Image;
     
     // get fileName
