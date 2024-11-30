@@ -20,6 +20,12 @@ MediaSource::MediaSource(const std::string& filePath)
         m_fileName = result[0];
     }
     else m_fileName = filePath; // just in case my regex doesn't work
+    
+    // Get miniature texture
+}
+
+MediaSource::~MediaSource()
+{
 }
 
 char* MediaSource::GetFileName()
