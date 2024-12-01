@@ -13,7 +13,7 @@
 #define CloseWindow WinCloseWindow
 #define ShowCursor WinShowCursor
 #define DrawText WinDrawText
-#include "external/portable-file-dialogs.h"
+#include "portable-file-dialogs.h"
 // Restore Raylib function names
 #undef Rectangle
 #undef CloseWindow
