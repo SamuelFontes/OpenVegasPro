@@ -35,6 +35,13 @@ Rectangle videoRec = Rectangle{1024, 24, 320, 180};
 VideoPreview preview(videoRec);
 
 double fps = 0;
+// layout_name: controls initialization
+//----------------------------------------------------------------------------------
+Rectangle ScrollPanel000ScrollView = { 0, 0, 0, 0 };
+Vector2 ScrollPanel000ScrollOffset = { 0, 0 };
+Vector2 ScrollPanel000BoundsOffset = { 0, 0 };
+//----------------------------------------------------------------------------------
+
 
 std::vector<MediaSource> mediaSources = {};
 int main(int argc, char **argv)
@@ -113,6 +120,9 @@ int main(int argc, char **argv)
 		{
 			isVideoRunning = !isVideoRunning;
 		}
+
+	  GuiScrollPanel(Rectangle( 400, 320, 120 - ScrollPanel000BoundsOffset.x, 72 - ScrollPanel000BoundsOffset.y), NULL, Rectangle(400, 320, 120, 72 ), &ScrollPanel000ScrollOffset, &ScrollPanel000ScrollView);
+
 
 		EndDrawing();
 		if (isVideoRunning)

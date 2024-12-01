@@ -3,7 +3,8 @@ enum class MediaType
 {
     Video,
     Image,
-    Audio
+    Audio,
+    Unknown
 };
 enum class LayerType
 {
