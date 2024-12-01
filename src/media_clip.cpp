@@ -1,11 +1,11 @@
 #include "media_clip.h"
 
-MediaClip::MediaClip(std::string path, MediaType type, int start, int end)
+MediaClip::MediaClip(MediaSource* source, unsigned long start, unsigned int layer = 0)
 {
-	m_mediaPath = path;
-	m_mediaType = type;
-	m_mediaStartKeyFrame = start;
-	m_mediaEndKeyFrame = end;
+	m_mediaSource = source;
+	m_mediaStartTick = start;
+	m_mediaEndTick = start; // TODO: get media lenght and convert to tickerate
+	m_layer = layer;
 }
 
 void MediaClip::RenderTexture(int keyFrame, Texture2D& texture)
