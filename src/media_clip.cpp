@@ -1,6 +1,6 @@
 #include "media_clip.h"
 
-MediaClip::MediaClip(MediaSource* source, unsigned long start, unsigned int layer = 0)
+MediaClip::MediaClip(MediaSource* source, unsigned long start, unsigned int layer)
 {
 	m_mediaSource = source;
 	m_mediaStartTick = start;

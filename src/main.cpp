@@ -22,7 +22,7 @@
 #include "video_preview.h"
 #include "media_source.h"
 
-typedef struct VideoPlayer
+typedef struct OldVideoPlayer
 {
 	cv::VideoCapture capture;
 	cv::Mat frame;
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 	// auto videoFilePath = pfd::open_file("Open", pfd::path::home()).result();
 
 	// Create a video player
-	VideoPlayer player = {};
+	OldVideoPlayer player = {};
 
 	InitWindow(1366, 768, "Open Vegas Pro");
 

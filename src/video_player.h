@@ -3,6 +3,7 @@
 #include "video_preview.h"
 #include "rendered_frame.h"
 #include <vector>
+#include <iostream>
 
 class VideoPlayer {
 private:
@@ -10,9 +11,9 @@ private:
 	unsigned long m_currentTick;
 	unsigned long m_tickAmount;
 	Rectangle m_playerRenderingRectangle;
-	VideoPreview m_videoPreview;
+	VideoPreview m_videoPreview = VideoPreview(Rectangle{1024, 24, 320, 180});
 	std::vector<RenderedFrame> m_framesBuffered;
-	RenderedFrame& m_currentFrame;
+	RenderedFrame* m_currentFrame;
 
 public:
 	VideoPlayer();
