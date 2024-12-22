@@ -1,6 +1,6 @@
 #pragma once
 #include "raylib.h"
-#include "../media_source.h"
+#include "../MediaSource.h"
 #include <vector>
 
 class UserInterface

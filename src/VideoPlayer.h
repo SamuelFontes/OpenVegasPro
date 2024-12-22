@@ -1,7 +1,7 @@
 #pragma once
 #include "raylib.h"
-#include "video_preview.h"
-#include "rendered_frame.h"
+#include "VideoPreview.h"
+#include "RenderedFrame.h"
 #include <vector>
 #include <iostream>
 

@@ -1,4 +1,4 @@
-#include "video_preview.h"
+#include "VideoPreview.h"
 
 void VideoPreview::RenderFrame()
 {

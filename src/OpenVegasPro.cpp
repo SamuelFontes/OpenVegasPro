@@ -19,9 +19,9 @@
 #undef CloseWindow
 #undef ShowCursor
 #undef DrawText
-#include "video_preview.h"
-#include "media_source.h"
-#include "user_interface/user_interface.h"
+#include "VideoPreview.h"
+#include "MediaSource.h"
+#include "UserInterface/UserInterface.h"
 
 typedef struct OldVideoPlayer
 {

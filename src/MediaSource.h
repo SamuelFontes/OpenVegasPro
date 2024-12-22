@@ -1,8 +1,8 @@
 #pragma once
 #include <string>
 #include <regex>
-#include "enums.h"
-#include "utils.h"
+#include "Enums.h"
+#include "Utils.h"
 #include <raylib.h>
 
 class MediaSource{

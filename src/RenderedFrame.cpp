@@ -1,4 +1,4 @@
-#include "rendered_frame.h"
+#include "RenderedFrame.h"
 
 RenderedFrame::RenderedFrame()
 {

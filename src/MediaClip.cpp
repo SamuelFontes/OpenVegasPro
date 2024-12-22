@@ -1,4 +1,4 @@
-#include "media_clip.h"
+#include "MediaClip.h"
 
 MediaClip::MediaClip(MediaSource* source, unsigned long start, unsigned int layer)
 {

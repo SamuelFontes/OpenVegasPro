@@ -1,4 +1,4 @@
-#include "media_source.h"
+#include "MediaSource.h"
 
 MediaSource::MediaSource(const std::string& filePath)
 {

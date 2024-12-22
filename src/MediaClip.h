@@ -1,9 +1,9 @@
 #pragma once
 #include <string>
-#include "enums.h"
+#include "Enums.h"
 #include "raylib.h"
 #include <opencv2/opencv.hpp>
-#include "media_source.h"
+#include "MediaSource.h"
 
 class MediaClip
 {
