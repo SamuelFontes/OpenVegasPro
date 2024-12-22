@@ -21,6 +21,7 @@
 #undef DrawText
 #include "video_preview.h"
 #include "media_source.h"
+#include "user_interface/user_interface.h"
 
 typedef struct OldVideoPlayer
 {
@@ -35,31 +36,15 @@ Rectangle videoRec = Rectangle{1024, 24, 320, 180};
 VideoPreview preview(videoRec);
 
 double fps = 0;
-// layout_name: controls initialization
-//----------------------------------------------------------------------------------
-Rectangle ScrollPanel000ScrollView = { 0, 0, 0, 0 };
-Vector2 ScrollPanel000ScrollOffset = { 0, 0 };
-Vector2 ScrollPanel000BoundsOffset = { 0, 0 };
-//----------------------------------------------------------------------------------
-
 
 std::vector<MediaSource> mediaSources = {};
 int main(int argc, char **argv)
 {
-	// Load Video
-	std::string videoFilePath = "X:/Recordings/2024-06-09_11-00-23.mp4";
-	// auto videoFilePath = pfd::open_file("Open", pfd::path::home()).result();
-
+	UserInterface ui;
 	// Create a video player
 	OldVideoPlayer player = {};
 
-	InitWindow(1366, 768, "Open Vegas Pro");
-
-	bool showMessageBox = false;
-
 	Texture2D texture = {};
-	// Directory selection
-	// auto dir = pfd::select_folder("Select any directory", pfd::path::home()).result();
 
 	while (!WindowShouldClose())
 	{
@@ -121,9 +106,6 @@ int main(int argc, char **argv)
 			isVideoRunning = !isVideoRunning;
 		}
 
-	  GuiScrollPanel(Rectangle( 400, 320, 120 - ScrollPanel000BoundsOffset.x, 72 - ScrollPanel000BoundsOffset.y), NULL, Rectangle(400, 320, 120, 72 ), &ScrollPanel000ScrollOffset, &ScrollPanel000ScrollView);
-
-
 		EndDrawing();
 		if (isVideoRunning)
 		{
@@ -132,6 +114,5 @@ int main(int argc, char **argv)
 		}
 	}
 
-	CloseWindow();
 	return 0;
 }

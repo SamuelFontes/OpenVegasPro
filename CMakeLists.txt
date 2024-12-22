@@ -8,7 +8,7 @@ if (POLICY CMP0141)
 endif()
 
 # Gather all .cpp files from the src folder
-file(GLOB SOURCE_FILES "src/*.cpp")
+file(GLOB SOURCE_FILES "src/*.cpp" "src/*/*.cpp")
 
 # Add header files manually (if necessary)
 set(HEADER_FILES 

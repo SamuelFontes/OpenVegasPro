@@ -10,7 +10,11 @@ MediaSource::MediaSource(const std::string& filePath)
 		cv::VideoCapture capture = cv::VideoCapture(filePath);
 		cv::Mat frame;
 		capture >> frame;
+
 		m_miniature = Utils::GetTextureFromVideoFrame(frame); // grabs the first frame
+
+        m_fps = capture.get(cv::CAP_PROP_FPS); // Grab video fps
+
 		capture.release();
 		frame.release();
     }
