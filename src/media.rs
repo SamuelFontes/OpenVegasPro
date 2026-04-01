@@ -5,11 +5,12 @@ pub struct MediaBrowser {
     pub selected: Option<usize>,
     pub scroll_offset: i32,
     pub add_clicked: bool,
+    pub dragging_item: Option<String>,
 }
 
 impl MediaBrowser {
     pub fn new() -> Self {
-        Self { items: Vec::new(), selected: None, scroll_offset: 0, add_clicked: false }
+        Self { items: Vec::new(), selected: None, scroll_offset: 0, add_clicked: false, dragging_item: None }
     }
 
     pub fn add(&mut self, path: String) {
@@ -84,13 +85,30 @@ impl MediaBrowser {
                 d.draw_rectangle(item_rect.x as i32, item_rect.y as i32, item_rect.width as i32, item_rect.height as i32, bg);
             }
 
-            d.draw_text(&item, item_rect.x as i32 + 6, item_rect.y as i32 + 6, 14, Color::WHITE);
+            // Filename
+            let fname = std::path::Path::new(item).file_name().and_then(|n| n.to_str()).unwrap_or("");
+            d.draw_text(&fname, item_rect.x as i32 + 6, item_rect.y as i32 + 6, 14, Color::WHITE);
 
             if hovered && lmb_click {
                 self.selected = Some(i);
             }
 
+            // Start dragging
+            if hovered && lmb_down && d.get_mouse_delta().length() > 2.0 {
+                if self.dragging_item.is_none() {
+                    self.dragging_item = Some(item.clone());
+                }
+            }
+
             y_cursor += item_h;
+        }
+
+        // Draw dragged item thumbnail
+        if !lmb_down && !lmb_click {
+            self.dragging_item = None;
+        } else if let Some(_) = self.dragging_item {
+            d.draw_rectangle(mouse.x as i32 + 10, mouse.y as i32 + 10, 100, 26, Color::new(70, 90, 145, 180));
+            d.draw_text("Dragging...", mouse.x as i32 + 16, mouse.y as i32 + 16, 12, Color::WHITE);
         }
     }
 }

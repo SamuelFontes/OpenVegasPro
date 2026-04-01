@@ -66,17 +66,26 @@ fn main() {
             handle_action(action, &mut timeline);
         }
 
+        let sw = rl.get_screen_width();
+        let sh = rl.get_screen_height();
+        
         // global file drop into window
         if rl.is_file_dropped() {
             let dropped = rl.load_dropped_files();
+            let timeline_y = sh - 160; // bottom_timeline_h = 160;
+
             for path in dropped.paths() {
-                media_browser.add(path.to_string());
-                println!("Dropped: {}", path);
+                let path_str = path.to_string();
+                if mouse.y >= timeline_y as f32 {
+                    // Drop into timeline
+                    timeline.handle_drop(path_str.clone(), mouse.x, mouse.y, 0, timeline_y, sw, 160);
+                }
+                
+                // Add to media browser always (Vegas logic)
+                media_browser.add(path_str);
+                println!("Dropped: {}", path.to_string());
             }
         }
-        
-        let sw = rl.get_screen_width();
-        let sh = rl.get_screen_height();
 
         // ── Draw ──────────────────────────────────────────────────────────────
         let mut d = rl.begin_drawing(&thread);
@@ -102,16 +111,27 @@ fn main() {
 
         d.draw_text("Video Preview", preview_x + 12, top_panel_y + 12, 20, Color::new(220, 220, 230, 255));
         if let Some(selected) = media_browser.selected {
-            let label = format!("Playing: {}", media_browser.items[selected]);
+            let fname = std::path::Path::new(&media_browser.items[selected]).file_name().and_then(|n| n.to_str()).unwrap_or("");
+            let label = format!("Playing: {}", fname);
             d.draw_text(&label, preview_x + 12, top_panel_y + 42, 16, Color::new(190, 190, 210, 255));
         } else {
             d.draw_text("No media selected.", preview_x + 12, top_panel_y + 42, 16, Color::new(175, 175, 195, 255));
         }
 
-        let mut timeline_action = None;
         // Timeline (bottom)
-        if let Some(action) = timeline.draw(&mut d, 0, sh - bottom_timeline_h, sw, bottom_timeline_h, mouse, lmb_click) {
+        let timeline_y = sh - bottom_timeline_h;
+        let mut timeline_action = None;
+        if let Some(action) = timeline.draw(&mut d, 0, timeline_y, sw, bottom_timeline_h, mouse, lmb_click) {
             timeline_action = Some(action);
+        }
+
+        // Drag media from browser to timeline
+        if lmb_click && media_browser.dragging_item.is_some() {
+            if mouse.y >= timeline_y as f32 {
+                let dragged_path = media_browser.dragging_item.as_ref().unwrap().clone();
+                timeline.handle_drop(dragged_path, mouse.x, mouse.y, 0, timeline_y, sw, bottom_timeline_h);
+            }
+            media_browser.dragging_item = None; // Drop handled
         }
 
         // Drag-and-drop hint

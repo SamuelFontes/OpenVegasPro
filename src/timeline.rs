@@ -1,17 +1,107 @@
 use raylib::prelude::*;
 use crate::keybindings::Action;
+use std::path::Path;
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum TrackType {
+    Video, // Video or Image
+    Audio,
+}
+
+pub struct TimelineItem {
+    pub source_path: String,
+    pub start_time: f32, // in seconds
+    pub duration: f32,
+}
+
+pub struct Track {
+    pub name: String,
+    pub kind: TrackType,
+    pub items: Vec<TimelineItem>,
+}
 
 pub struct Timeline {
     pub position: f32,
     pub duration: f32,
     pub zoom: f32,
     pub is_playing: bool,
-    pub play_start_pos: f32, // Where playback started (for Vegas-style stop)
+    pub play_start_pos: f32,
+    pub tracks: Vec<Track>, // new tracks
 }
 
 impl Timeline {
     pub fn new() -> Self {
-        Self { position: 0.0, duration: 120.0, zoom: 1.0, is_playing: false, play_start_pos: 0.0 }
+        Self { 
+            position: 0.0, 
+            duration: 120.0, 
+            zoom: 1.0, 
+            is_playing: false, 
+            play_start_pos: 0.0,
+            tracks: Vec::new(),
+        }
+    }
+
+    pub fn handle_drop(&mut self, path: String, mouse_x: f32, mouse_y: f32, view_x: i32, view_y: i32, view_w: i32, view_h: i32) {
+        // Only if dropped in timeline rect
+        if mouse_x < view_x as f32 || mouse_x > (view_x + view_w) as f32 
+            || mouse_y < view_y as f32 || mouse_y > (view_y + view_h) as f32 {
+            return;
+        }
+
+        let p = Path::new(&path);
+        let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+        
+        let (kind, duration) = match ext.as_str() {
+            "mp4" | "mov" | "avi" | "mkv" | "webm" => (TrackType::Video, 5.0),
+            "png" | "jpg" | "jpeg" | "bmp" => (TrackType::Video, 5.0),
+            "mp3" | "wav" | "ogg" | "flac" => (TrackType::Audio, 5.0), // Need actual duration parsing later
+            _ => { return; } // Unsupported
+        };
+
+        // Determine drop time based on mouse X (header is at x+10, w-20)
+        let drop_time = ((mouse_x - view_x as f32 - 100.0) / ((view_w as f32 - 100.0).max(1.0)) * self.duration).clamp(0.0, self.duration);
+
+        // Find or create correct track
+        let track_list_h = view_h - 60; // tracks start at y + 60
+        let track_h = 40;
+        let relative_y = mouse_y - (view_y as f32 + 60.0);
+        let mut track_idx = None;
+        
+        if relative_y > 0.0 && relative_y < track_list_h as f32 {
+            let idx = (relative_y / track_h as f32) as usize;
+            if idx < self.tracks.len() && self.tracks[idx].kind == kind {
+                track_idx = Some(idx);
+            }
+        }
+
+        if track_idx.is_none() {
+            // Check if we have an empty or last track of this type we can add to
+            for (i, t) in self.tracks.iter().enumerate() {
+                if t.kind == kind {
+                    track_idx = Some(i);
+                    // Could also continue to find the bottom-most track
+                }
+            }
+        }
+
+        if track_idx.is_none() {
+            // Create new track
+            let t_name = if kind == TrackType::Video { "Video Track" } else { "Audio Track" };
+            self.tracks.push(Track {
+                name: format!("{} {}", t_name, self.tracks.len() + 1),
+                kind,
+                items: Vec::new(),
+            });
+            track_idx = Some(self.tracks.len() - 1);
+        }
+
+        if let Some(idx) = track_idx {
+            self.tracks[idx].items.push(TimelineItem {
+                source_path: path.clone(),
+                start_time: drop_time,
+                duration,
+            });
+        }
     }
 
     pub fn update(&mut self, dt: f32) {
@@ -62,6 +152,47 @@ impl Timeline {
             let seconds = (self.duration / num_markers as f32) * i as f32;
             let label = format!("{:2.0}s", seconds);
             d.draw_text(&label, fx - 12, track_y + track_h + 4, 12, Color::new(180, 180, 200, 255));
+        }
+
+        // Draw Tracks
+        let tracks_start_y = track_y + track_h + 20;
+        let track_row_h = 40;
+        let pixels_per_sec = (w - 20) as f32 / self.duration;
+
+        for (i, track) in self.tracks.iter().enumerate() {
+            let ty = tracks_start_y + i as i32 * track_row_h;
+            if ty + track_row_h > y + h - 40 { break; } // don't draw over controls
+
+            // Track Header
+            d.draw_rectangle(x, ty, 100, track_row_h, Color::new(45, 48, 55, 255));
+            d.draw_rectangle_lines(x, ty, 100, track_row_h, Color::new(105, 105, 130, 255));
+            d.draw_text(&track.name, x + 4, ty + 12, 12, Color::new(220, 220, 220, 255));
+            
+            // Track Body
+            d.draw_rectangle(x + 100, ty, w - 100, track_row_h, Color::new(35, 38, 45, 255));
+            d.draw_rectangle_lines(x + 100, ty, w - 100, track_row_h, Color::new(80, 80, 95, 255));
+
+            // Track Items
+            for item in &track.items {
+                let item_x = x + 100 + (item.start_time * pixels_per_sec) as i32;
+                let item_w = (item.duration * pixels_per_sec) as i32;
+                
+                let (bg_color, outline) = match track.kind {
+                    TrackType::Video => (Color::new(70, 110, 160, 255), Color::new(100, 140, 190, 255)),
+                    TrackType::Audio => (Color::new(70, 140, 100, 255), Color::new(100, 170, 130, 255)),
+                };
+
+                let item_rect = Rectangle::new(item_x as f32, (ty + 2) as f32, item_w as f32, (track_row_h - 4) as f32);
+                d.draw_rectangle_rec(item_rect, bg_color);
+                d.draw_rectangle_lines_ex(item_rect, 1.0, outline);
+
+                // Filename
+                let fname = Path::new(&item.source_path).file_name().and_then(|n| n.to_str()).unwrap_or("");
+                // Only draw text if it fits loosely
+                if item_w > 20 {
+                    d.draw_text(fname, item_x + 4, ty + 12, 10, Color::new(240, 240, 255, 255));
+                }
+            }
         }
 
         let pos_x_f = (x + 10) as f32 + ((w - 20) as f32 * (self.position / self.duration)).clamp(0.0, (w - 20) as f32);
