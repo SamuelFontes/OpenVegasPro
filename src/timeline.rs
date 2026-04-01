@@ -66,12 +66,14 @@ impl Timeline {
         let p = Path::new(&path);
         let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
         
-        let (kind, duration) = match ext.as_str() {
-            "mp4" | "mov" | "avi" | "mkv" | "webm" => (TrackType::Video, 5.0),
-            "png" | "jpg" | "jpeg" | "bmp" => (TrackType::Video, 5.0),
-            "mp3" | "wav" | "ogg" | "flac" => (TrackType::Audio, 5.0), // Need actual duration parsing later
+        let (is_video_clip, is_image_clip, is_audio_clip) = match ext.as_str() {
+            "mp4" | "mov" | "avi" | "mkv" | "webm" => (true, false, false),
+            "png" | "jpg" | "jpeg" | "bmp" => (false, true, false),
+            "mp3" | "wav" | "ogg" | "flac" => (false, false, true),
             _ => { return; } // Unsupported
         };
+
+        let duration = 5.0; // Needs actual parsing later
 
         // Determine drop time based on mouse X tracking relative to body_x
         let header_w = 120;
@@ -85,43 +87,63 @@ impl Timeline {
         let track_list_h = view_h - 34;
         let track_h = 40;
         let relative_y = mouse_y - tracks_start_y as f32;
-        let mut track_idx = None;
+        let mut target_track_idx = None;
         
         if relative_y > 0.0 && relative_y < track_list_h as f32 {
             let idx = (relative_y / track_h as f32) as usize;
-            if idx < self.tracks.len() && self.tracks[idx].kind == kind {
-                track_idx = Some(idx);
+            if idx < self.tracks.len() {
+                target_track_idx = Some(idx);
             }
         }
 
-        if track_idx.is_none() {
-            // Check if we have an empty or last track of this type we can add to
-            for (i, t) in self.tracks.iter().enumerate() {
-                if t.kind == kind {
-                    track_idx = Some(i);
-                    // Could also continue to find the bottom-most track
+        let mut add_item_to_track_type = |kind: TrackType, path: String, duration: f32, target_idx_hint: Option<usize>| {
+            let mut track_idx = None;
+            
+            // Check hint first
+            if let Some(idx) = target_idx_hint {
+                if self.tracks[idx].kind == kind {
+                    track_idx = Some(idx);
                 }
             }
-        }
 
-        if track_idx.is_none() {
-            // Create new track
-            let t_name = if kind == TrackType::Video { "Video Track" } else { "Audio Track" };
-            self.tracks.push(Track {
-                name: format!("{} {}", t_name, self.tracks.len() + 1),
-                kind,
-                items: Vec::new(),
-            });
-            track_idx = Some(self.tracks.len() - 1);
-        }
+            if track_idx.is_none() {
+                // Check if we have an empty or last track of this type we can add to
+                for (i, t) in self.tracks.iter().enumerate() {
+                    if t.kind == kind {
+                        track_idx = Some(i);
+                    }
+                }
+            }
 
-        if let Some(idx) = track_idx {
-            self.tracks[idx].items.push(TimelineItem {
-                source_path: path.clone(),
-                start_time: drop_time,
-                duration,
-                media_offset: 0.0,
-            });
+            if track_idx.is_none() {
+                // Create new track
+                let t_name = if kind == TrackType::Video { "Video Track" } else { "Audio Track" };
+                self.tracks.push(Track {
+                    name: format!("{} {}", t_name, self.tracks.len() + 1),
+                    kind,
+                    items: Vec::new(),
+                });
+                track_idx = Some(self.tracks.len() - 1);
+            }
+
+            if let Some(idx) = track_idx {
+                self.tracks[idx].items.push(TimelineItem {
+                    source_path: path.clone(),
+                    start_time: drop_time,
+                    duration,
+                    media_offset: 0.0,
+                });
+            }
+        };
+
+        if is_video_clip {
+            // Adds both video and audio track items for video
+            add_item_to_track_type(TrackType::Video, path.clone(), duration, target_track_idx);
+            add_item_to_track_type(TrackType::Audio, path.clone(), duration, None); // Can refine how the paired audio track is placed 
+        } else if is_image_clip {
+            add_item_to_track_type(TrackType::Video, path.clone(), duration, target_track_idx);
+        } else if is_audio_clip {
+            add_item_to_track_type(TrackType::Audio, path.clone(), duration, target_track_idx);
         }
     }
 

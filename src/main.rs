@@ -183,7 +183,7 @@ fn main() {
 
         // Handle add button action from media browser
         if media_browser.add_clicked {
-            if let Some(file_path) = FileDialog::new().add_filter("Media", &["mp4", "mov", "avi", "mkv", "png", "jpg"]).pick_file() {
+            if let Some(file_path) = FileDialog::new().add_filter("Media", &["mp4", "mov", "avi", "mkv", "webm", "png", "jpg", "jpeg", "bmp", "mp3", "wav", "ogg", "flac"]).pick_file() {
                 if let Some(path_str) = file_path.to_str() {
                     media_browser.add(path_str.to_string());
                     println!("Added media: {}", path_str);
