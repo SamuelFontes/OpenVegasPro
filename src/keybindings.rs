@@ -12,6 +12,7 @@ pub enum Action {
     SplitClip,
     Undo,
     Redo,
+    UntieClips,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -46,6 +47,8 @@ impl KeyManager {
         // ── Editing ──────────────────────────────────────────────────────────
         // S: Split clip at cursor
         self.bind(KEY_S, false, false, false, SplitClip);
+        // U: Untie clips
+        self.bind(KEY_U, false, false, false, UntieClips);
         
         // ── File / Project ───────────────────────────────────────────────────
         self.bind(KEY_S, true, false, false, SaveProject);

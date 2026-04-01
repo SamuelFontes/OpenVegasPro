@@ -13,6 +13,8 @@ pub struct TimelineItem {
     pub start_time: f32, // in seconds
     pub duration: f32,
     pub media_offset: f32, // Where in the source media to start playing from
+    pub group_id: Option<u32>,
+    pub selected: bool,
 }
 
 impl TimelineItem {
@@ -41,6 +43,7 @@ pub struct Timeline {
     pub play_start_pos: f32,
     pub tracks: Vec<Track>,
     pub dragging_item: Option<(usize, usize, f32)>, // track_idx, item_idx, time_offset_from_mouse
+    pub next_group_id: u32,
 }
 
 impl Timeline {
@@ -53,6 +56,7 @@ impl Timeline {
             play_start_pos: 0.0,
             tracks: Vec::new(),
             dragging_item: None,
+            next_group_id: 1,
         }
     }
 
@@ -96,10 +100,8 @@ impl Timeline {
             }
         }
 
-        let mut add_item_to_track_type = |kind: TrackType, path: String, duration: f32, target_idx_hint: Option<usize>| {
+        let mut add_item_to_track_type = |kind: TrackType, path: String, duration: f32, target_idx_hint: Option<usize>, group_id: Option<u32>| {
             let mut track_idx = None;
-            
-            // Check hint first
             if let Some(idx) = target_idx_hint {
                 if self.tracks[idx].kind == kind {
                     track_idx = Some(idx);
@@ -132,18 +134,21 @@ impl Timeline {
                     start_time: drop_time,
                     duration,
                     media_offset: 0.0,
+                    group_id,
+                    selected: false,
                 });
             }
         };
 
         if is_video_clip {
-            // Adds both video and audio track items for video
-            add_item_to_track_type(TrackType::Video, path.clone(), duration, target_track_idx);
-            add_item_to_track_type(TrackType::Audio, path.clone(), duration, None); // Can refine how the paired audio track is placed 
+            let group_id = Some(self.next_group_id);
+            self.next_group_id += 1;
+            add_item_to_track_type(TrackType::Video, path.clone(), duration, target_track_idx, group_id);
+            add_item_to_track_type(TrackType::Audio, path.clone(), duration, None, group_id);
         } else if is_image_clip {
-            add_item_to_track_type(TrackType::Video, path.clone(), duration, target_track_idx);
+            add_item_to_track_type(TrackType::Video, path.clone(), duration, target_track_idx, None);
         } else if is_audio_clip {
-            add_item_to_track_type(TrackType::Audio, path.clone(), duration, target_track_idx);
+            add_item_to_track_type(TrackType::Audio, path.clone(), duration, target_track_idx, None);
         }
     }
 
@@ -206,6 +211,16 @@ impl Timeline {
         self.is_playing = false;
     }
 
+    pub fn untie_selected(&mut self) {
+        for track in &mut self.tracks {
+            for item in &mut track.items {
+                if item.selected {
+                    item.group_id = None;
+                }
+            }
+        }
+    }
+
     pub fn draw(&mut self, d: &mut RaylibDrawHandle, x: i32, y: i32, w: i32, h: i32, mouse: Vector2, lmb_down: bool, lmb_click: bool) -> Option<Action> {
         d.draw_rectangle(x, y, w, h, Color::new(30, 32, 40, 255));
         d.draw_rectangle_lines(x, y, w, h, Color::new(75, 75, 85, 255));
@@ -237,6 +252,41 @@ impl Timeline {
 
         let mut drag_hover_found = false;
 
+        // Phase 1: Update dragged items and calculate group offsets before main render loop
+        let mut drag_changes = Vec::new();
+        if let Some((drag_ti, drag_ii, offset)) = self.dragging_item {
+            if lmb_down {
+                let mouse_time = ((mouse.x - body_x as f32) / pixels_per_sec).max(0.0);
+                let new_start = (mouse_time + offset).max(0.0);
+                
+                if let Some(track) = self.tracks.get(drag_ti) {
+                    if let Some(item) = track.items.get(drag_ii) {
+                        let delta = new_start - item.start_time;
+                        if delta != 0.0 {
+                            if let Some(gid) = item.group_id {
+                                drag_changes.push((gid, delta));
+                            } else {
+                                self.tracks[drag_ti].items[drag_ii].start_time = new_start;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Apply group offsets
+        for (gid, delta) in drag_changes {
+            for t in &mut self.tracks {
+                for i in &mut t.items {
+                    if i.group_id == Some(gid) {
+                        i.start_time += delta;
+                    }
+                }
+            }
+        }
+
+        let mut clicked_item = None;
+
         for (i, track) in self.tracks.iter_mut().enumerate() {
             let ty = tracks_start_y + i as i32 * track_row_h;
             if ty + track_row_h > y + h - 30 { break; } // don't draw over controls
@@ -252,26 +302,28 @@ impl Timeline {
 
             // Track Items
             for (item_idx, item) in track.items.iter_mut().enumerate() {
-                let is_being_dragged = self.dragging_item == Some((i, item_idx, 0.0)) || self.dragging_item.is_some_and(|dr| dr.0 == i && dr.1 == item_idx);
-                
-                // If dragging, update position
-                if is_being_dragged && lmb_down {
-                    let mouse_time = ((mouse.x - body_x as f32) / pixels_per_sec).max(0.0);
-                    let (_t, _i, offset) = self.dragging_item.unwrap();
-                    item.start_time = (mouse_time + offset).max(0.0);
-                }
-
+                let is_being_dragged = self.dragging_item.is_some_and(|dr| dr.0 == i && dr.1 == item_idx);
                 let item_x = body_x + (item.start_time * pixels_per_sec) as i32;
                 let item_w = (item.duration * pixels_per_sec) as i32;
                 
                 let (bg_color, outline) = match track.kind {
                     TrackType::Video => (Color::new(70, 110, 160, 255), Color::new(100, 140, 190, 255)),
-                    TrackType::Audio => (Color::new(70, 140, 100, 255), Color::new(100, 170, 130, 255)),
+                    TrackType::Audio => {
+                        if item.group_id.is_some() {
+                            (Color::new(45, 135, 140, 255), Color::new(65, 165, 170, 255))
+                        } else {
+                            (Color::new(70, 140, 100, 255), Color::new(100, 170, 130, 255))
+                        }
+                    },
                 };
 
                 let item_rect = Rectangle::new(item_x as f32, (ty + 2) as f32, item_w as f32, (track_row_h - 4) as f32);
                 let is_hovered = mouse.x >= item_rect.x && mouse.x <= item_rect.x + item_rect.width 
                               && mouse.y >= item_rect.y && mouse.y <= item_rect.y + item_rect.height;
+
+                if is_hovered && lmb_click {
+                    clicked_item = Some((i, item_idx));
+                }
 
                 // Capture drag
                 if is_hovered && lmb_down && self.dragging_item.is_none() && !drag_hover_found {
@@ -282,7 +334,8 @@ impl Timeline {
                     }
                 }
 
-                let draw_bg = if is_being_dragged { Color::new(100, 140, 200, 255) } else { bg_color };
+                let is_selected_or_dragged = is_being_dragged || item.selected;
+                let draw_bg = if is_selected_or_dragged { Color::new(100, 140, 200, 255) } else { bg_color };
 
                 d.draw_rectangle_rec(item_rect, draw_bg);
                 d.draw_rectangle_lines_ex(item_rect, 1.0, outline);
@@ -298,6 +351,19 @@ impl Timeline {
 
         if !lmb_down {
             self.dragging_item = None;
+        }
+
+        if let Some((ci, cidx)) = clicked_item {
+            for t in &mut self.tracks {
+                for it in &mut t.items {
+                    it.selected = false;
+                }
+            }
+            if let Some(track) = self.tracks.get_mut(ci) {
+                if let Some(item) = track.items.get_mut(cidx) {
+                    item.selected = true;
+                }
+            }
         }
 
         // Playhead

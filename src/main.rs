@@ -21,6 +21,7 @@ fn handle_action(action: Action, timeline: &mut Timeline) {
         Action::OpenProject => println!("[Open Project]"),
         Action::SaveProject => println!("[Save Project]"),
         Action::SplitClip => println!("[Split Clip]"),
+        Action::UntieClips => timeline.untie_selected(),
         Action::Undo => println!("[Undo]"),
         Action::Redo => println!("[Redo]"),
     }
