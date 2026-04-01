@@ -5,6 +5,8 @@ edition = "2024"
 description = "A video editor built with Rust, raylib and OpenGL"
 
 [dependencies]
+crossbeam-channel = "0.5.15"
+ffmpeg-next = "8.1.0"
 raylib = "5.0"
 rfd = "0.14"
 

@@ -77,7 +77,17 @@ impl Timeline {
             _ => { return; } // Unsupported
         };
 
-        let duration = 5.0; // Needs actual parsing later
+        // Try to get actual duration if possible
+        let mut actual_duration = 5.0; // fallback
+        if is_video_clip || is_audio_clip {
+            if let Ok(engine) = crate::engine::MediaEngine::new(&path) {
+                if let Some(dur) = engine.duration_secs() {
+                    actual_duration = dur as f32;
+                }
+            }
+        }
+        
+        let duration = actual_duration;
 
         // Determine drop time based on mouse X tracking relative to body_x
         let header_w = 120;

@@ -3,6 +3,7 @@ mod toolbar;
 mod media;
 mod timeline;
 mod keybindings;
+mod engine;
 
 use raylib::prelude::*;
 use rfd::FileDialog;
@@ -11,6 +12,7 @@ use toolbar::Toolbar;
 use media::MediaBrowser;
 use timeline::Timeline;
 use keybindings::{KeyManager, Action};
+use engine::MediaEngine;
 
 fn handle_action(action: Action, timeline: &mut Timeline) {
     match action {
@@ -41,6 +43,11 @@ fn main() {
     let mut media_browser = MediaBrowser::new();
     let mut timeline = Timeline::new();
     let key_manager = KeyManager::new();
+
+    let mut current_video_engine: Option<MediaEngine> = None;
+    let mut current_engine_path: Option<String> = None;
+    let mut cached_texture: Option<Texture2D> = None;
+    let mut last_decoded_time: f32 = -1.0;
 
     while !rl.window_should_close() {
         let dt = rl.get_frame_time();
@@ -88,6 +95,60 @@ fn main() {
             }
         }
 
+        let current_time = timeline.position;
+        // Pre-draw step: Fetch frame from engine if active video item changed or time moved
+        if let Some(active_video) = timeline.get_active_video_item_at(current_time) {
+            let local_time = active_video.get_local_time(current_time);
+            let path = active_video.source_path.clone();
+
+            if current_engine_path.as_deref() != Some(&path) {
+                if let Ok(new_engine) = MediaEngine::new(&path) {
+                    current_video_engine = Some(new_engine);
+                    current_engine_path = Some(path.clone());
+                    last_decoded_time = -1.0;
+                }
+            }
+
+            if let Some(engine) = &mut current_video_engine {
+                // If the time shift is significant (e.g. scrubbed or played past our frame duration)
+                // Let's decode if time shifted by > 0.03 seconds (approx 30fps) for now.
+                if (local_time - last_decoded_time).abs() > 0.03 {
+                    if let Some(rgba_data) = engine.get_frame(local_time as f64) {
+                        let w = engine.width() as i32;
+                        let h = engine.height() as i32;
+
+                        if cached_texture.is_none() {
+                            let mut img = Image::gen_image_color(w, h, Color::BLANK);
+                            // Ensure raw RGBA formatting exactly how Raylib's pixel pipeline understands it
+                            img.format = raylib::ffi::PixelFormat::PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 as i32;
+                            if let Ok(texture) = rl.load_texture_from_image(&thread, &img) {
+                                cached_texture = Some(texture);
+                            }
+                        }
+
+                        if let Some(texture) = &mut cached_texture {
+                            // Check if dimensions somehow changed in the stream, recreate blank if needed
+                            if texture.width != w || texture.height != h {
+                                let mut img = Image::gen_image_color(w, h, Color::BLANK);
+                                img.format = raylib::ffi::PixelFormat::PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 as i32;
+                                if let Ok(tex) = rl.load_texture_from_image(&thread, &img) {
+                                    *texture = tex;
+                                }
+                            }
+                            
+                            let _ = texture.update_texture(&rgba_data);
+                        }
+                        
+                        last_decoded_time = local_time;
+                    }
+                }
+            }
+        } else {
+            cached_texture = None;
+            current_engine_path = None;
+            current_video_engine = None;
+        }
+
         // ── Draw ──────────────────────────────────────────────────────────────
         let mut d = rl.begin_drawing(&thread);
 
@@ -112,14 +173,29 @@ fn main() {
 
         d.draw_text("Video Preview", preview_x + 12, top_panel_y + 12, 20, Color::new(220, 220, 230, 255));
         
-        let current_time = timeline.position;
         // Render Mixed Media Engine (Mock Video)
         if let Some(active_video) = timeline.get_active_video_item_at(current_time) {
             let local_time = active_video.get_local_time(current_time);
             let fname = std::path::Path::new(&active_video.source_path).file_name().and_then(|n| n.to_str()).unwrap_or("");
             
-            // Draw placeholder video frame
-            d.draw_rectangle(preview_x + 20, top_panel_y + 80, preview_w - 40, mid_panel_h - 100, Color::new(10, 10, 12, 255));
+            // Draw real video texture if available, else placeholder
+            if let Some(texture) = &cached_texture {
+                let max_w = (preview_w - 40) as f32;
+                let max_h = (mid_panel_h - 100) as f32;
+                let tw = texture.width as f32;
+                let th = texture.height as f32;
+                
+                let scale = (max_w / tw).min(max_h / th);
+                let draw_w = tw * scale;
+                let draw_h = th * scale;
+                let draw_x = preview_x as f32 + 20.0 + (max_w - draw_w) / 2.0;
+                let draw_y = top_panel_y as f32 + 80.0 + (max_h - draw_h) / 2.0;
+                
+                d.draw_texture_ex(texture, Vector2::new(draw_x, draw_y), 0.0, scale, Color::WHITE);
+            } else {
+                d.draw_rectangle(preview_x + 20, top_panel_y + 80, preview_w - 40, mid_panel_h - 100, Color::new(10, 10, 12, 255));
+            }
+
             let mut info_text = format!("Playing: {}\nTimeline Pos: {:.2}s\nLocal Media Time: {:.2}s", fname, current_time, local_time);
             
             let active_audio = timeline.get_active_audio_items_at(current_time);
