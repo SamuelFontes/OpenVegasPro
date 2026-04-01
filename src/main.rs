@@ -2,6 +2,7 @@ mod theme;
 mod toolbar;
 mod media;
 mod timeline;
+mod keybindings;
 
 use raylib::prelude::*;
 use rfd::FileDialog;
@@ -9,6 +10,21 @@ use theme::*;
 use toolbar::Toolbar;
 use media::MediaBrowser;
 use timeline::Timeline;
+use keybindings::{KeyManager, Action};
+
+fn handle_action(action: Action, timeline: &mut Timeline) {
+    match action {
+        Action::PlayPause => timeline.toggle_play_pause(),
+        Action::Stop => timeline.stop(),
+        Action::GoToStart => timeline.go_to_start(),
+        Action::NewProject => println!("[New Project]"),
+        Action::OpenProject => println!("[Open Project]"),
+        Action::SaveProject => println!("[Save Project]"),
+        Action::SplitClip => println!("[Split Clip]"),
+        Action::Undo => println!("[Undo]"),
+        Action::Redo => println!("[Redo]"),
+    }
+}
 
 fn main() {
     let (mut rl, thread) = raylib::init()
@@ -23,24 +39,31 @@ fn main() {
     let toolbar = Toolbar::new();
     let mut media_browser = MediaBrowser::new();
     let mut timeline = Timeline::new();
+    let key_manager = KeyManager::new();
 
     while !rl.window_should_close() {
+        let dt = rl.get_frame_time();
+        timeline.update(dt);
+
         // ── Input ─────────────────────────────────────────────────────────────
         let mouse     = rl.get_mouse_position();
         let lmb_down  = rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT);
         let lmb_click = rl.is_mouse_button_released(MouseButton::MOUSE_BUTTON_LEFT);
 
-        let ctrl = rl.is_key_down(KeyboardKey::KEY_LEFT_CONTROL)
-                || rl.is_key_down(KeyboardKey::KEY_RIGHT_CONTROL);
-
-        if ctrl {
-            if rl.is_key_pressed(KeyboardKey::KEY_N) { println!("[New]");  }
-            if rl.is_key_pressed(KeyboardKey::KEY_O) { println!("[Open]"); }
-            if rl.is_key_pressed(KeyboardKey::KEY_S) { println!("[Save]"); }
-        }
+        let mut incoming_actions = key_manager.check_actions(&rl);
 
         if let Some(action) = toolbar.handle_click(mouse, lmb_click) {
-            println!("[{}]", action.name());
+            let a = match action {
+                toolbar::BtnKind::New => Action::NewProject,
+                toolbar::BtnKind::Open => Action::OpenProject,
+                toolbar::BtnKind::Save => Action::SaveProject,
+            };
+            incoming_actions.push(a);
+        }
+
+        // Process pre-draw actions
+        for action in incoming_actions {
+            handle_action(action, &mut timeline);
         }
 
         // global file drop into window
@@ -51,7 +74,7 @@ fn main() {
                 println!("Dropped: {}", path);
             }
         }
-
+        
         let sw = rl.get_screen_width();
         let sh = rl.get_screen_height();
 
@@ -85,11 +108,23 @@ fn main() {
             d.draw_text("No media selected.", preview_x + 12, top_panel_y + 42, 16, Color::new(175, 175, 195, 255));
         }
 
+        let mut timeline_action = None;
         // Timeline (bottom)
-        timeline.draw(&mut d, 0, sh - bottom_timeline_h, sw, bottom_timeline_h);
+        if let Some(action) = timeline.draw(&mut d, 0, sh - bottom_timeline_h, sw, bottom_timeline_h, mouse, lmb_click) {
+            timeline_action = Some(action);
+        }
 
         // Drag-and-drop hint
         d.draw_text("Drag files from your OS into the window to import into media browser.", 12, sh - bottom_timeline_h - 24, 14, Color::new(160, 160, 175, 255));
+
+        // FPS – bottom-right
+        d.draw_fps(sw - 80, sh - 26);
+        
+        drop(d); // Drop the draw handle so we can mutate timeline again
+
+        if let Some(action) = timeline_action {
+            handle_action(action, &mut timeline);
+        }
 
         // Handle add button action from media browser
         if media_browser.add_clicked {
@@ -100,8 +135,5 @@ fn main() {
                 }
             }
         }
-
-        // FPS – bottom-right
-        d.draw_fps(sw - 80, sh - 26);
     }
 }
