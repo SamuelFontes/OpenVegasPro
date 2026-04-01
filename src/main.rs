@@ -142,10 +142,20 @@ fn main() {
         
         // Draw MediaBrowser dragged item thumbnail ON TOP OF EVERYTHING
         if let Some(ref dragged) = media_browser.dragging_item {
+            let th_size = 32;
             let label = std::path::Path::new(dragged).file_name().and_then(|n| n.to_str()).unwrap_or("Dragging...");
-            let rect_w = d.measure_text(label, 12) + 24;
-            d.draw_rectangle(mouse.x as i32 + 10, mouse.y as i32 + 10, rect_w, 26, Color::new(70, 90, 145, 180));
-            d.draw_text(label, mouse.x as i32 + 16, mouse.y as i32 + 16, 12, Color::WHITE);
+            let rect_w = th_size + 12 + d.measure_text(label, 12) + 12;
+            let mx = mouse.x as i32 + 10;
+            let my = mouse.y as i32 + 10;
+            let th_margin = 6;
+            let rect_h = th_size + th_margin*2; // 44
+
+            d.draw_rectangle(mx, my, rect_w, rect_h, Color::new(70, 90, 145, 230));
+            d.draw_rectangle_lines(mx, my, rect_w, rect_h, Color::new(100, 120, 180, 255));
+            
+            media::draw_media_thumbnail(&mut d, dragged, mx + th_margin, my + th_margin, th_size);
+            
+            d.draw_text(label, mx + th_margin + th_size + 8, my + (rect_h - 12)/2, 12, Color::WHITE);
         }
 
         drop(d); // Drop the draw handle so we can mutate timeline again
