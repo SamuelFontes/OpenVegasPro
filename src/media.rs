@@ -103,12 +103,8 @@ impl MediaBrowser {
             y_cursor += item_h;
         }
 
-        // Draw dragged item thumbnail
         if !lmb_down && !lmb_click {
             self.dragging_item = None;
-        } else if let Some(_) = self.dragging_item {
-            d.draw_rectangle(mouse.x as i32 + 10, mouse.y as i32 + 10, 100, 26, Color::new(70, 90, 145, 180));
-            d.draw_text("Dragging...", mouse.x as i32 + 16, mouse.y as i32 + 16, 12, Color::WHITE);
         }
     }
 }

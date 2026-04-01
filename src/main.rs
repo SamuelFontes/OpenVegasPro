@@ -121,7 +121,7 @@ fn main() {
         // Timeline (bottom)
         let timeline_y = sh - bottom_timeline_h;
         let mut timeline_action = None;
-        if let Some(action) = timeline.draw(&mut d, 0, timeline_y, sw, bottom_timeline_h, mouse, lmb_click) {
+        if let Some(action) = timeline.draw(&mut d, 0, timeline_y, sw, bottom_timeline_h, mouse, lmb_down, lmb_click) {
             timeline_action = Some(action);
         }
 
@@ -140,6 +140,14 @@ fn main() {
         // FPS – bottom-right
         d.draw_fps(sw - 80, sh - 26);
         
+        // Draw MediaBrowser dragged item thumbnail ON TOP OF EVERYTHING
+        if let Some(ref dragged) = media_browser.dragging_item {
+            let label = std::path::Path::new(dragged).file_name().and_then(|n| n.to_str()).unwrap_or("Dragging...");
+            let rect_w = d.measure_text(label, 12) + 24;
+            d.draw_rectangle(mouse.x as i32 + 10, mouse.y as i32 + 10, rect_w, 26, Color::new(70, 90, 145, 180));
+            d.draw_text(label, mouse.x as i32 + 16, mouse.y as i32 + 16, 12, Color::WHITE);
+        }
+
         drop(d); // Drop the draw handle so we can mutate timeline again
 
         if let Some(action) = timeline_action {

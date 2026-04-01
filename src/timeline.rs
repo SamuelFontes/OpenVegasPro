@@ -26,7 +26,8 @@ pub struct Timeline {
     pub zoom: f32,
     pub is_playing: bool,
     pub play_start_pos: f32,
-    pub tracks: Vec<Track>, // new tracks
+    pub tracks: Vec<Track>,
+    pub dragging_item: Option<(usize, usize, f32)>, // track_idx, item_idx, time_offset_from_mouse
 }
 
 impl Timeline {
@@ -38,6 +39,7 @@ impl Timeline {
             is_playing: false, 
             play_start_pos: 0.0,
             tracks: Vec::new(),
+            dragging_item: None,
         }
     }
 
@@ -136,7 +138,7 @@ impl Timeline {
         self.is_playing = false;
     }
 
-    pub fn draw(&mut self, d: &mut RaylibDrawHandle, x: i32, y: i32, w: i32, h: i32, mouse: Vector2, lmb_click: bool) -> Option<Action> {
+    pub fn draw(&mut self, d: &mut RaylibDrawHandle, x: i32, y: i32, w: i32, h: i32, mouse: Vector2, lmb_down: bool, lmb_click: bool) -> Option<Action> {
         d.draw_rectangle(x, y, w, h, Color::new(30, 32, 40, 255));
         d.draw_rectangle_lines(x, y, w, h, Color::new(75, 75, 85, 255));
 
@@ -159,7 +161,9 @@ impl Timeline {
         let track_row_h = 40;
         let pixels_per_sec = (w - 20) as f32 / self.duration;
 
-        for (i, track) in self.tracks.iter().enumerate() {
+        let mut drag_hover_found = false;
+
+        for (i, track) in self.tracks.iter_mut().enumerate() {
             let ty = tracks_start_y + i as i32 * track_row_h;
             if ty + track_row_h > y + h - 40 { break; } // don't draw over controls
 
@@ -173,7 +177,16 @@ impl Timeline {
             d.draw_rectangle_lines(x + 100, ty, w - 100, track_row_h, Color::new(80, 80, 95, 255));
 
             // Track Items
-            for item in &track.items {
+            for (item_idx, item) in track.items.iter_mut().enumerate() {
+                let is_being_dragged = self.dragging_item == Some((i, item_idx, 0.0)) || self.dragging_item.is_some_and(|d| d.0 == i && d.1 == item_idx);
+                
+                // If dragging, update position
+                if is_being_dragged && lmb_down {
+                    let mouse_time = ((mouse.x - (x + 100) as f32) / pixels_per_sec).max(0.0);
+                    let (_t, _i, offset) = self.dragging_item.unwrap();
+                    item.start_time = (mouse_time + offset).max(0.0);
+                }
+
                 let item_x = x + 100 + (item.start_time * pixels_per_sec) as i32;
                 let item_w = (item.duration * pixels_per_sec) as i32;
                 
@@ -183,7 +196,21 @@ impl Timeline {
                 };
 
                 let item_rect = Rectangle::new(item_x as f32, (ty + 2) as f32, item_w as f32, (track_row_h - 4) as f32);
-                d.draw_rectangle_rec(item_rect, bg_color);
+                let is_hovered = mouse.x >= item_rect.x && mouse.x <= item_rect.x + item_rect.width 
+                              && mouse.y >= item_rect.y && mouse.y <= item_rect.y + item_rect.height;
+
+                // Capture drag
+                if is_hovered && lmb_down && self.dragging_item.is_none() && !drag_hover_found {
+                    if d.get_mouse_delta().length() > 0.0 {
+                        let mouse_time = ((mouse.x - (x + 100) as f32) / pixels_per_sec).max(0.0);
+                        self.dragging_item = Some((i, item_idx, item.start_time - mouse_time));
+                        drag_hover_found = true;
+                    }
+                }
+
+                let draw_bg = if is_being_dragged { Color::new(100, 140, 200, 255) } else { bg_color };
+
+                d.draw_rectangle_rec(item_rect, draw_bg);
                 d.draw_rectangle_lines_ex(item_rect, 1.0, outline);
 
                 // Filename
@@ -193,6 +220,10 @@ impl Timeline {
                     d.draw_text(fname, item_x + 4, ty + 12, 10, Color::new(240, 240, 255, 255));
                 }
             }
+        }
+
+        if !lmb_down {
+            self.dragging_item = None;
         }
 
         let pos_x_f = (x + 10) as f32 + ((w - 20) as f32 * (self.position / self.duration)).clamp(0.0, (w - 20) as f32);
