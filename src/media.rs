@@ -12,7 +12,7 @@ pub fn draw_media_thumbnail(d: &mut RaylibDrawHandle, path: &str, x: i32, y: i32
         // sound wave
         for i in 0..5 {
             let h = if i % 2 == 0 { size / 2 } else { size / 3 };
-            let cx = x + 8 + i * 6;
+            let cx = x + 4 + i * 5;
             let cy = y + size/2 - h/2;
             d.draw_rectangle(cx, cy, 4, h, Color::new(140, 220, 180, 255));
         }
