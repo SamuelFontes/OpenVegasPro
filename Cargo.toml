@@ -6,6 +6,7 @@ description = "A video editor built with Rust, raylib and OpenGL"
 
 [dependencies]
 raylib = "5.0"
+rfd = "0.14"
 
 [profile.release]
 opt-level = 3
