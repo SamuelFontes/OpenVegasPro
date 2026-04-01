@@ -12,6 +12,19 @@ pub struct TimelineItem {
     pub source_path: String,
     pub start_time: f32, // in seconds
     pub duration: f32,
+    pub media_offset: f32, // Where in the source media to start playing from
+}
+
+impl TimelineItem {
+    // Check if this item is active at a given timeline position
+    pub fn is_active_at(&self, time: f32) -> bool {
+        time >= self.start_time && time < self.start_time + self.duration
+    }
+    
+    // Get the local media time corresponding to a timeline position
+    pub fn get_local_time(&self, timeline_position: f32) -> f32 {
+        (timeline_position - self.start_time) + self.media_offset
+    }
 }
 
 pub struct Track {
@@ -60,13 +73,18 @@ impl Timeline {
             _ => { return; } // Unsupported
         };
 
-        // Determine drop time based on mouse X (header is at x+10, w-20)
-        let drop_time = ((mouse_x - view_x as f32 - 100.0) / ((view_w as f32 - 100.0).max(1.0)) * self.duration).clamp(0.0, self.duration);
+        // Determine drop time based on mouse X tracking relative to body_x
+        let header_w = 120;
+        let body_x = view_x + header_w;
+        let body_w = view_w - header_w;
+        
+        let drop_time = ((mouse_x - body_x as f32) / (body_w as f32).max(1.0) * self.duration).clamp(0.0, self.duration);
 
         // Find or create correct track
-        let track_list_h = view_h - 60; // tracks start at y + 60
+        let tracks_start_y = view_y + 10 + 24; // ruler is at view_y + 10 with height 24
+        let track_list_h = view_h - 34;
         let track_h = 40;
-        let relative_y = mouse_y - (view_y as f32 + 60.0);
+        let relative_y = mouse_y - tracks_start_y as f32;
         let mut track_idx = None;
         
         if relative_y > 0.0 && relative_y < track_list_h as f32 {
@@ -102,8 +120,36 @@ impl Timeline {
                 source_path: path.clone(),
                 start_time: drop_time,
                 duration,
+                media_offset: 0.0,
             });
         }
+    }
+
+    // Get the top-most video frame available at the given time
+    pub fn get_active_video_item_at(&self, time: f32) -> Option<&TimelineItem> {
+        for track in self.tracks.iter().rev() { // Top-down logic
+            if track.kind != TrackType::Video { continue; }
+            for item in &track.items {
+                if item.is_active_at(time) {
+                    return Some(item);
+                }
+            }
+        }
+        None
+    }
+
+    // Get all audio clips active at the given time (we mix them)
+    pub fn get_active_audio_items_at(&self, time: f32) -> Vec<&TimelineItem> {
+        let mut active_audio = Vec::new();
+        for track in &self.tracks {
+            if track.kind != TrackType::Audio { continue; }
+            for item in &track.items {
+                if item.is_active_at(time) {
+                    active_audio.push(item);
+                }
+            }
+        }
+        active_audio
     }
 
     pub fn update(&mut self, dt: f32) {
@@ -142,52 +188,58 @@ impl Timeline {
         d.draw_rectangle(x, y, w, h, Color::new(30, 32, 40, 255));
         d.draw_rectangle_lines(x, y, w, h, Color::new(75, 75, 85, 255));
 
-        let track_y = y + 14;
-        let track_h = 26;
-        d.draw_rectangle(x + 10, track_y, w - 20, track_h, Color::new(42, 44, 52, 255));
-        d.draw_rectangle_lines(x + 10, track_y, w - 20, track_h, Color::new(105, 105, 130, 255));
+        let header_w = 120;
+        let body_x = x + header_w;
+        let body_w = w - header_w;
 
-        let num_markers = 11;
+        // Ruler
+        let ruler_y = y + 10;
+        let ruler_h = 24;
+        d.draw_rectangle(x, ruler_y, header_w, ruler_h, Color::new(35, 37, 45, 255));
+        d.draw_rectangle(body_x, ruler_y, body_w, ruler_h, Color::new(42, 44, 52, 255));
+        d.draw_rectangle_lines(body_x, ruler_y, body_w, ruler_h, Color::new(105, 105, 130, 255));
+
+        let num_markers = 15;
         for i in 0..=num_markers {
-            let fx = x + 10 + ((w - 20) * i) / num_markers;
-            d.draw_line(fx, track_y, fx, track_y + track_h, Color::new(80, 80, 90, 255));
+            let fx = body_x + (body_w * i) / num_markers;
+            d.draw_line(fx, ruler_y, fx, ruler_y + ruler_h, Color::new(80, 80, 90, 255));
             let seconds = (self.duration / num_markers as f32) * i as f32;
-            let label = format!("{:2.0}s", seconds);
-            d.draw_text(&label, fx - 12, track_y + track_h + 4, 12, Color::new(180, 180, 200, 255));
+            let label = format!("{:2.1}s", seconds);
+            d.draw_text(&label, fx + 4, ruler_y + 4, 10, Color::new(180, 180, 200, 255));
         }
 
         // Draw Tracks
-        let tracks_start_y = track_y + track_h + 20;
+        let tracks_start_y = ruler_y + ruler_h;
         let track_row_h = 40;
-        let pixels_per_sec = (w - 20) as f32 / self.duration;
+        let pixels_per_sec = body_w as f32 / self.duration;
 
         let mut drag_hover_found = false;
 
         for (i, track) in self.tracks.iter_mut().enumerate() {
             let ty = tracks_start_y + i as i32 * track_row_h;
-            if ty + track_row_h > y + h - 40 { break; } // don't draw over controls
+            if ty + track_row_h > y + h - 30 { break; } // don't draw over controls
 
             // Track Header
-            d.draw_rectangle(x, ty, 100, track_row_h, Color::new(45, 48, 55, 255));
-            d.draw_rectangle_lines(x, ty, 100, track_row_h, Color::new(105, 105, 130, 255));
-            d.draw_text(&track.name, x + 4, ty + 12, 12, Color::new(220, 220, 220, 255));
+            d.draw_rectangle(x, ty, header_w, track_row_h, Color::new(45, 48, 55, 255));
+            d.draw_rectangle_lines(x, ty, header_w, track_row_h, Color::new(105, 105, 130, 255));
+            d.draw_text(&track.name, x + 8, ty + 14, 12, Color::new(220, 220, 220, 255));
             
             // Track Body
-            d.draw_rectangle(x + 100, ty, w - 100, track_row_h, Color::new(35, 38, 45, 255));
-            d.draw_rectangle_lines(x + 100, ty, w - 100, track_row_h, Color::new(80, 80, 95, 255));
+            d.draw_rectangle(body_x, ty, body_w, track_row_h, Color::new(35, 38, 45, 255));
+            d.draw_rectangle_lines(body_x, ty, body_w, track_row_h, Color::new(80, 80, 95, 255));
 
             // Track Items
             for (item_idx, item) in track.items.iter_mut().enumerate() {
-                let is_being_dragged = self.dragging_item == Some((i, item_idx, 0.0)) || self.dragging_item.is_some_and(|d| d.0 == i && d.1 == item_idx);
+                let is_being_dragged = self.dragging_item == Some((i, item_idx, 0.0)) || self.dragging_item.is_some_and(|dr| dr.0 == i && dr.1 == item_idx);
                 
                 // If dragging, update position
                 if is_being_dragged && lmb_down {
-                    let mouse_time = ((mouse.x - (x + 100) as f32) / pixels_per_sec).max(0.0);
+                    let mouse_time = ((mouse.x - body_x as f32) / pixels_per_sec).max(0.0);
                     let (_t, _i, offset) = self.dragging_item.unwrap();
                     item.start_time = (mouse_time + offset).max(0.0);
                 }
 
-                let item_x = x + 100 + (item.start_time * pixels_per_sec) as i32;
+                let item_x = body_x + (item.start_time * pixels_per_sec) as i32;
                 let item_w = (item.duration * pixels_per_sec) as i32;
                 
                 let (bg_color, outline) = match track.kind {
@@ -202,7 +254,7 @@ impl Timeline {
                 // Capture drag
                 if is_hovered && lmb_down && self.dragging_item.is_none() && !drag_hover_found {
                     if d.get_mouse_delta().length() > 0.0 {
-                        let mouse_time = ((mouse.x - (x + 100) as f32) / pixels_per_sec).max(0.0);
+                        let mouse_time = ((mouse.x - body_x as f32) / pixels_per_sec).max(0.0);
                         self.dragging_item = Some((i, item_idx, item.start_time - mouse_time));
                         drag_hover_found = true;
                     }
@@ -226,9 +278,27 @@ impl Timeline {
             self.dragging_item = None;
         }
 
-        let pos_x_f = (x + 10) as f32 + ((w - 20) as f32 * (self.position / self.duration)).clamp(0.0, (w - 20) as f32);
+        // Playhead
+        let pos_x_f = body_x as f32 + (body_w as f32 * (self.position / self.duration)).clamp(0.0, body_w as f32);
         let pos_x = pos_x_f as i32;
-        d.draw_line(pos_x, track_y - 4, pos_x, track_y + track_h + 4, Color::new(220, 75, 60, 255));
+        let timeline_bottom = y + h - 30; // Above controls
+        d.draw_line(pos_x, ruler_y, pos_x, timeline_bottom, Color::new(220, 75, 60, 255));
+        d.draw_triangle(
+            Vector2::new(pos_x as f32 - 5.0, ruler_y as f32),
+            Vector2::new(pos_x as f32 + 5.0, ruler_y as f32),
+            Vector2::new(pos_x as f32, ruler_y as f32 + 8.0),
+            Color::new(220, 75, 60, 255)
+        );
+
+        // Click on Ruler to scrub time
+        let over_ruler = mouse.x >= body_x as f32 && mouse.x <= (body_x + body_w) as f32 
+                      && mouse.y >= ruler_y as f32 && mouse.y <= timeline_bottom as f32;
+        if over_ruler && (lmb_click || lmb_down) {
+            self.position = ((mouse.x - body_x as f32) / pixels_per_sec).clamp(0.0, self.duration);
+            if !self.is_playing && lmb_click {
+                 self.play_start_pos = self.position;
+            }
+        }
 
         // Let's add playback control buttons: [|<<] [|>] [||] [[]]
         let mut triggered_action = None;

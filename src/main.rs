@@ -110,12 +110,29 @@ fn main() {
         d.draw_rectangle_lines(preview_x, top_panel_y, preview_w, mid_panel_h, Color::new(92, 92, 102, 255));
 
         d.draw_text("Video Preview", preview_x + 12, top_panel_y + 12, 20, Color::new(220, 220, 230, 255));
-        if let Some(selected) = media_browser.selected {
-            let fname = std::path::Path::new(&media_browser.items[selected]).file_name().and_then(|n| n.to_str()).unwrap_or("");
-            let label = format!("Playing: {}", fname);
-            d.draw_text(&label, preview_x + 12, top_panel_y + 42, 16, Color::new(190, 190, 210, 255));
+        
+        let current_time = timeline.position;
+        // Render Mixed Media Engine (Mock Video)
+        if let Some(active_video) = timeline.get_active_video_item_at(current_time) {
+            let local_time = active_video.get_local_time(current_time);
+            let fname = std::path::Path::new(&active_video.source_path).file_name().and_then(|n| n.to_str()).unwrap_or("");
+            
+            // Draw placeholder video frame
+            d.draw_rectangle(preview_x + 20, top_panel_y + 80, preview_w - 40, mid_panel_h - 100, Color::new(10, 10, 12, 255));
+            let mut info_text = format!("Playing: {}\nTimeline Pos: {:.2}s\nLocal Media Time: {:.2}s", fname, current_time, local_time);
+            
+            let active_audio = timeline.get_active_audio_items_at(current_time);
+            if !active_audio.is_empty() {
+                info_text.push_str("\n\nMixed Audio Tracks:");
+                for au in active_audio {
+                    let aname = std::path::Path::new(&au.source_path).file_name().and_then(|n| n.to_str()).unwrap_or("");
+                    info_text.push_str(&format!("\n• {} @ {:.2}s", aname, au.get_local_time(current_time)));
+                }
+            }
+
+            d.draw_text(&info_text, preview_x + 30, top_panel_y + 95, 16, Color::new(200, 200, 220, 255));
         } else {
-            d.draw_text("No media selected.", preview_x + 12, top_panel_y + 42, 16, Color::new(175, 175, 195, 255));
+            d.draw_text("No active video frames at this position.", preview_x + 12, top_panel_y + 42, 16, Color::new(175, 175, 195, 255));
         }
 
         // Timeline (bottom)
